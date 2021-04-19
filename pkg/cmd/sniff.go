@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"ksniff/kube"
@@ -198,12 +199,12 @@ func (o *Ksniff) Complete(cmd *cobra.Command, args []string) error {
 		return errors.New("context doesn't exist")
 	}
 
-	o.restConfig, err = clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
-		&clientcmd.ClientConfigLoadingRules{ExplicitPath: o.configFlags.ToRawKubeConfigLoader().ConfigAccess().GetDefaultFilename()},
-		&clientcmd.ConfigOverrides{
-			CurrentContext: o.settings.UserSpecifiedKubeContext,
-		}).ClientConfig()
-
+	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
+	configOverrides := &clientcmd.ConfigOverrides{
+		CurrentContext: o.settings.UserSpecifiedKubeContext,
+	}
+	kubeConfig := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loadingRules, configOverrides)
+	o.restConfig, err = kubeConfig.ClientConfig()
 	if err != nil {
 		return err
 	}
@@ -263,7 +264,7 @@ func (o *Ksniff) Validate() error {
 		log.Infof("using tcpdump path at: '%s'", o.settings.UserSpecifiedLocalTcpdumpPath)
 	}
 
-	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(o.settings.UserSpecifiedPodName, v1.GetOptions{})
+	pod, err := o.clientset.CoreV1().Pods(o.resultingContext.Namespace).Get(context.TODO(), o.settings.UserSpecifiedPodName, v1.GetOptions{})
 	if err != nil {
 		return err
 	}
